@@ -5,50 +5,63 @@ package tasktoo2;
 
 import java.io.File;
 import java.util.Scanner;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.DocumentBuilder;
-import org.w3c.dom.Document;
-import org.w3c.dom.NodeList;
-import org.w3c.dom.Node;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+import org.xml.sax.Attributes;
+import org.xml.sax.helpers.DefaultHandler;
 import org.json.JSONObject;
 
 public class App {
-  public static void main(String[] args) {
-    try {
-      File inputFile = new File("input.xml");
-      DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-      DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-      Document doc = dBuilder.parse(inputFile);
-      doc.getDocumentElement().normalize();
+    public static void main(String[] args) {
+        try {
+            File inputFile = new File("input.xml");
+            SAXParserFactory factory = SAXParserFactory.newInstance();
+            SAXParser saxParser = factory.newSAXParser();
 
-      Scanner scanner = new Scanner(System.in);
-      System.out.println("Enter comma-separated list of field names to output:");
-      String[] selectedFields = scanner.nextLine().split(",");
-      
-      JSONObject jsonOutput = new JSONObject();
-      for (String fieldName : selectedFields) {
-        NodeList nodeList = doc.getElementsByTagName("field");
-        boolean foundField = false;
-        for (int i = 0; i < nodeList.getLength(); i++) {
-          Node node = nodeList.item(i);
-          if (node.getNodeType() == Node.ELEMENT_NODE) {
-            String nameAttr = node.getAttributes().getNamedItem("name").getNodeValue();
-            if (nameAttr.equals(fieldName.trim())) {
-              String fieldValue = node.getTextContent();
-              jsonOutput.put(fieldName.trim(), fieldValue);
-              foundField = true;
-              break;
-            }
-          }
+            Scanner scanner = new Scanner(System.in);
+            System.out.println("Enter comma-separated list of field names to output:");
+            String[] selectedFields = scanner.nextLine().split(",");
+
+            JSONObject jsonOutput = new JSONObject();
+            DefaultHandler handler = new DefaultHandler() {
+                String currentFieldName = "";
+                boolean foundField = false;
+
+                public void startElement(String uri, String localName, String qName, Attributes attributes) {
+                    if (qName.equalsIgnoreCase("field")) {
+                        currentFieldName = attributes.getValue("name");
+                    }
+                }
+
+                public void characters(char ch[], int start, int length) {
+                    String fieldValue = new String(ch, start, length);
+                    if (currentFieldName.trim().length() > 0) {
+                        for (String fieldName : selectedFields) {
+                            if (currentFieldName.equals(fieldName.trim())) {
+                                jsonOutput.put(fieldName.trim(), fieldValue);
+                                foundField = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                public void endElement(String uri, String localName, String qName) {
+                    if (qName.equalsIgnoreCase("field")) {
+                        if (!foundField) {
+                            System.out.println(
+                                    "Error: Field name \"" + currentFieldName.trim() + "\" not found in XML document.");
+                        }
+                        currentFieldName = "";
+                        foundField = false;
+                    }
+                }
+            };
+            saxParser.parse(inputFile, handler);
+
+            System.out.println(jsonOutput.toString());
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
         }
-        if (!foundField) {
-          System.out.println("Error: Field name \"" + fieldName.trim() + "\" not found in XML document.");
-        }
-      }
-      System.out.println(jsonOutput.toString());
-    } catch (Exception e) {
-      System.out.println("Error: " + e.getMessage());
     }
-  }
 }
-
