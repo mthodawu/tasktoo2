@@ -13,36 +13,42 @@ import org.w3c.dom.Node;
 import org.json.JSONObject;
 
 public class App {
-    public static void main(String[] args) {
-        try {
-            File inputFile = new File("input.xml");
-            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-            Document doc = dBuilder.parse(inputFile);
-            doc.getDocumentElement().normalize();
+  public static void main(String[] args) {
+    try {
+      File inputFile = new File("input.xml");
+      DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+      DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+      Document doc = dBuilder.parse(inputFile);
+      doc.getDocumentElement().normalize();
 
-            Scanner scanner = new Scanner(System.in);
-            System.out.println("Enter comma-separated list of field names to output:");
-            String[] selectedFields = scanner.nextLine().split(",");
-
-            JSONObject jsonOutput = new JSONObject();
-            for (String fieldName : selectedFields) {
-                NodeList nodeList = doc.getElementsByTagName("field");
-                for (int i = 0; i < nodeList.getLength(); i++) {
-                    Node node = nodeList.item(i);
-                    if (node.getNodeType() == Node.ELEMENT_NODE) {
-                        String nameAttr = node.getAttributes().getNamedItem("name").getNodeValue();
-                        if (nameAttr.equals(fieldName.trim())) {
-                            String fieldValue = node.getTextContent();
-                            jsonOutput.put(fieldName.trim(), fieldValue);
-                            break;
-                        }
-                    }
-                }
+      Scanner scanner = new Scanner(System.in);
+      System.out.println("Enter comma-separated list of field names to output:");
+      String[] selectedFields = scanner.nextLine().split(",");
+      
+      JSONObject jsonOutput = new JSONObject();
+      for (String fieldName : selectedFields) {
+        NodeList nodeList = doc.getElementsByTagName("field");
+        boolean foundField = false;
+        for (int i = 0; i < nodeList.getLength(); i++) {
+          Node node = nodeList.item(i);
+          if (node.getNodeType() == Node.ELEMENT_NODE) {
+            String nameAttr = node.getAttributes().getNamedItem("name").getNodeValue();
+            if (nameAttr.equals(fieldName.trim())) {
+              String fieldValue = node.getTextContent();
+              jsonOutput.put(fieldName.trim(), fieldValue);
+              foundField = true;
+              break;
             }
-            System.out.println(jsonOutput.toString());
-        } catch (Exception e) {
-            e.printStackTrace();
+          }
         }
+        if (!foundField) {
+          System.out.println("Error: Field name \"" + fieldName.trim() + "\" not found in XML document.");
+        }
+      }
+      System.out.println(jsonOutput.toString());
+    } catch (Exception e) {
+      System.out.println("Error: " + e.getMessage());
     }
+  }
 }
+
